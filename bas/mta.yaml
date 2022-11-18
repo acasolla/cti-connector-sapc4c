@@ -1,0 +1,94 @@
+_schema-version: "3.2"
+ID: softphone-cticonnector
+description: Connector for SAP C4C
+version: 2.2.1
+modules:
+- name: softphone-cticonnector-dest-content
+  type: com.sap.application.content
+  requires:
+  - name: softphone-cticonnector-dest-srv
+    parameters:
+      content-target: true
+  - name: softphone-cticonnector-repo-host
+    parameters:
+      service-key:
+        name: softphone-cticonnector-repo-host-key
+  - name: softphone-cticonnector-uaa
+    parameters:
+      service-key:
+        name: softphone-cticonnector-uaa-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: softphone-cticonnector_repo_host
+          ServiceInstanceName: softphone-cticonnector-html5-srv
+          ServiceKeyName: softphone-cticonnector-repo-host-key
+          sap.cloud.service: softphone-cticonnector
+        - Authentication: OAuth2UserTokenExchange
+          Name: softphone-cticonnector_uaa
+          ServiceInstanceName: softphone-cticonnector-xsuaa-srv
+          ServiceKeyName: softphone-cticonnector-uaa-key
+          sap.cloud.service: softphone-cticonnector
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: softphone-cticonnector-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: softphone-cticonnector-repo-host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - softphonecticonnector.zip
+      name: softphonecticonnector
+      target-path: resources/
+- name: softphonecticonnector
+  type: html5
+  path: .
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: softphone-cticonnector-dest-srv
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: softphone-cticonnector-dest-srv
+    service-plan: lite
+- name: softphone-cticonnector-uaa
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: softphone-cticonnector-xsuaa-srv
+    service-plan: application
+- name: softphone-cticonnector-repo-host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: softphone-cticonnector-html5-srv
+    service-plan: app-host
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
